@@ -1,23 +1,19 @@
 import React from 'react';
 
-
 function Footer() {
   return (
- <div className="wrapper">
-      <main className="content"></main>
-
     <footer className="main-footer">
       <div className="container footer-grid">
         <div className="footer-brand">
-          <div className="logo">Reion<span>Oqwei</span></div>
+          <div className="logo" style={{ color: 'var(--white)' }}>Reion<span>Oqwei</span></div>
           <p>Премиальное качество для тех, кто любит себя</p>
         </div>
         <div className="footer-nav">
           <h4>Навигация</h4>
           <ul>
-            <li><a href="#">Главная</a></li>
-            <li><a href="#">Услуги и цены</a></li>
-            <li><a href="#">Наши контакты</a></li>
+            <li><button onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'home' }))} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: '14px' }}>Главная</button></li>
+            <li><button onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'services' }))} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: '14px' }}>Каталог</button></li>
+            <li><button onClick={() => window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'contact' }))} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: '14px' }}>Контакты</button></li>
           </ul>
         </div>
         <div className="footer-social">
@@ -33,7 +29,6 @@ function Footer() {
         <p>&copy; 2025 Reion Oqwei. Все права защищены</p>
       </div>
     </footer>
-    </div>
   );
 }
 
