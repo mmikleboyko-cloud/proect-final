@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
@@ -9,8 +9,11 @@ import CartPage from './pages/CartPage';
 import LoginPage from './pages/LoginPage';
 import FavoritesPage from './pages/FavoritesPage';
 import ProfilePage from './pages/ProfilePage';
+import RulesPage from './pages/RulesPage';
+import { useToast } from './context/ToastContext';
 
 function App() {
+  const toast = useToast();
   const [currentPage, setCurrentPage] = useState('home');
   const [cartCount, setCartCount] = useState(0);
   const [user, setUser] = useState(null);
@@ -63,8 +66,11 @@ function App() {
         else next.delete(productId);
         return next;
       });
+
+      if (result.favorited) toast.success('Добавлено в избранное');
+      else toast.info('Удалено из избранного');
     } catch (e) {
-      alert('❌ ' + e.message);
+      toast.error(e.message);
     }
   };
 
@@ -87,6 +93,13 @@ function App() {
       window.removeEventListener('favoritesUpdated', handleFavUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    if (currentPage === 'cart' || currentPage === 'services') {
+      fetchCartCount();
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [currentPage]);
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
@@ -113,7 +126,7 @@ function App() {
         setUser(null);
         setCartCount(0);
         setFavorites(new Set());
-        alert('👋 Вы вышли из аккаунта');
+        toast.success('Вы вышли из аккаунта');
         setCurrentPage('home');
       }
     } catch (e) { console.error(e); }
@@ -124,11 +137,12 @@ function App() {
       case 'home':      return <HomePage />;
       case 'services':  return <ServicesPage favorites={favorites} onToggleFavorite={toggleFavorite} />;
       case 'favorites': return <FavoritesPage favorites={favorites} onToggleFavorite={toggleFavorite} />;
-      case 'cart':      return <CartPage />;
+      case 'cart':      return <CartPage user={user} />;
       case 'contact':   return <ContactPage />;
       case 'register':  return <RegisterPage onRegisterSuccess={handleRegisterSuccess} />;
       case 'login':     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
       case 'profile':   return <ProfilePage onLogout={handleLogout} />;
+      case 'rules':     return <RulesPage />;
       default:          return <HomePage />;
     }
   };

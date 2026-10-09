@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useToast } from '../context/ToastContext';
 
 const ITEMS_PER_PAGE = 8;
 
 function PriceTable({ onAddToCart, favorites, onToggleFavorite }) {
+  const toast = useToast();
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [clothing, setClothing] = useState([]);
@@ -33,6 +35,7 @@ function PriceTable({ onAddToCart, favorites, onToggleFavorite }) {
   useEffect(() => { setCurrentPage(1); }, [filter, searchQuery]);
 
   const totalPages = Math.ceil(filteredClothing.length / ITEMS_PER_PAGE);
+
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredClothing.slice(start, start + ITEMS_PER_PAGE);
@@ -65,11 +68,11 @@ function PriceTable({ onAddToCart, favorites, onToggleFavorite }) {
     if (!selectedProduct) return;
     const onKey = (e) => { if (e.key === 'Escape') setSelectedProduct(null); };
     window.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
+      document.body.style.overflow = prev;
     };
   }, [selectedProduct]);
 
@@ -84,12 +87,13 @@ function PriceTable({ onAddToCart, favorites, onToggleFavorite }) {
       });
       const result = await response.json();
       if (result.success) {
-        alert('✅ Товар добавлен в корзину');
+        toast.success('Товар добавлен в корзину');
         window.dispatchEvent(new CustomEvent('cartUpdated'));
-      } else throw new Error(result.error || 'Ошибка добавления');
+      } else {
+        throw new Error(result.error || 'Ошибка добавления');
+      }
     } catch (err) {
-      console.error(err);
-      alert('❌ ' + err.message);
+      toast.error('Ошибка: ' + err.message);
     } finally {
       setAddingItemId(null);
     }
@@ -150,19 +154,18 @@ function PriceTable({ onAddToCart, favorites, onToggleFavorite }) {
           return (
             <div className="clothing-card" key={item.id}>
               <div className="card-image" onClick={() => openProduct(item)} style={{ cursor: 'pointer' }}>
-           <img src={item.image} alt={item.name} onError={handleImageError} loading="lazy" />
-         <button
-             className={`fav-btn ${isFav ? 'active' : ''}`}
-             onClick={(e) => { e.stopPropagation(); onToggleFavorite && onToggleFavorite(item.id); }}
-             aria-label={isFav ? 'Убрать из избранного' : 'В избранное'}
-             title={isFav ? 'Убрать из избранного' : 'В избранное'}
-         >
-           {isFav ? '❤️' : '🤍'}
-         </button>
-               <div className="card-image-overlay">
-                <span className="card-view-badge">👁 Просмотр</span>
-               </div>
-            </div>
+                <img src={item.image} alt={item.name} onError={handleImageError} loading="lazy" />
+                <button
+                  className={`fav-btn ${isFav ? 'active' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); onToggleFavorite && onToggleFavorite(item.id); }}
+                  aria-label="В избранное"
+                >
+                  {isFav ? '❤️' : '🤍'}
+                </button>
+                <div className="card-image-overlay">
+                  <span className="card-view-badge">👁 Просмотр</span>
+                </div>
+              </div>
               <div className="card-body">
                 <h3 onClick={() => openProduct(item)} style={{ cursor: 'pointer' }}>{item.name}</h3>
                 <p className="category">{item.category}</p>
@@ -203,18 +206,15 @@ function PriceTable({ onAddToCart, favorites, onToggleFavorite }) {
         <div className="product-modal-overlay" onClick={closeProduct}>
           <div className="product-modal" onClick={(e) => e.stopPropagation()}>
             <button className="product-modal-close" onClick={closeProduct} aria-label="Закрыть">✕</button>
-
             <div className="product-modal-image">
               <img src={selectedProduct.image} alt={selectedProduct.name} onError={handleImageError} />
               <button
                 className={`fav-btn fav-btn-modal ${favorites?.has(selectedProduct.id) ? 'active' : ''}`}
                 onClick={() => onToggleFavorite && onToggleFavorite(selectedProduct.id)}
-                aria-label="В избранное"
               >
                 {favorites?.has(selectedProduct.id) ? '❤️' : '🤍'}
               </button>
             </div>
-
             <div className="product-modal-info">
               <span className="product-modal-category">{selectedProduct.category}</span>
               <h2 className="product-modal-title">{selectedProduct.name}</h2>

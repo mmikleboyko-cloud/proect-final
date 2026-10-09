@@ -1,40 +1,32 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import RulesContent from './RulesContent';
+import { useToast } from '../context/ToastContext';
 
 function RegistrationForm({ onRegisterSuccess }) {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    age: '',
     city: '',
-    rules: false
+    rules: false,
+    personalData: false
   });
 
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   const validate = () => {
     const newErrors = {};
-
-    if (formData.name.length < 2) {
-      newErrors.name = 'Введите имя не менее 2 символов';
-    }
-    if (!formData.email.includes('@') || !formData.email.includes('.')) {
-      newErrors.email = 'Введите корректный email';
-    }
-    if (!formData.password || formData.password.length < 6) {
-      newErrors.password = 'Пароль должен содержать минимум 6 символов';
-    }
-    if (!formData.city) {
-      newErrors.city = 'Выберите город из списка';
-    }
-    if (!formData.rules) {
-      newErrors.rules = 'Необходимо согласиться с правилами';
-    }
-
+    if (formData.name.length < 2) newErrors.name = 'Введите имя не менее 2 символов';
+    if (!formData.email.includes('@') || !formData.email.includes('.')) newErrors.email = 'Введите корректный email';
+    if (!formData.password || formData.password.length < 10) newErrors.password = 'Пароль должен содержать минимум 10 символов';
+    if (!formData.city) newErrors.city = 'Выберите город из списка';
+    if (!formData.rules) newErrors.rules = 'Необходимо согласиться с правилами';
+    if (!formData.personalData) newErrors.personalData = 'Необходимо согласие на обработку данных';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -45,16 +37,12 @@ function RegistrationForm({ onRegisterSuccess }) {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
     if (serverError) setServerError('');
   };
 
-  // ⚠️ ВАЖНО: handleSubmit объявлен как async!
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validate()) return;
 
     setLoading(true);
@@ -69,9 +57,9 @@ function RegistrationForm({ onRegisterSuccess }) {
           name: formData.name,
           email: formData.email,
           password: formData.password,
-          age: formData.age,
           city: formData.city,
-          rules: formData.rules
+          rules: formData.rules,
+          personalData: formData.personalData
         })
       });
 
@@ -79,41 +67,50 @@ function RegistrationForm({ onRegisterSuccess }) {
 
       if (result.success) {
         setSubmitted(true);
-        setFormData({
-          name: '', email: '', password: '', age: '', city: '', rules: false
-        });
-        // Авто-логин: сообщаем наверх
+        setFormData({ name: '', email: '', password: '', city: '', rules: false, personalData: false });
+        toast.success('Регистрация успешна!');
         if (onRegisterSuccess) onRegisterSuccess(result.user);
       } else {
-        if (result.errors) {
-          setErrors(result.errors);
-        } else {
-          setServerError(result.error || 'Ошибка при регистрации');
-        }
+        if (result.errors) setErrors(result.errors);
+        else setServerError(result.error || 'Ошибка при регистрации');
       }
     } catch (error) {
       console.error('Ошибка отправки:', error);
-      setServerError('Ошибка соединения с сервером. Проверьте интернет-соединение.');
+      setServerError('Ошибка соединения с сервером.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setFormData({
-      name: '', email: '', password: '', age: '', city: '', rules: false
-    });
+    setFormData({ name: '', email: '', password: '', city: '', rules: false, personalData: false });
     setErrors({});
     setSubmitted(false);
     setServerError('');
   };
 
+  const acceptRules = () => {
+    setFormData(prev => ({ ...prev, rules: true }));
+    setErrors(prev => ({ ...prev, rules: '' }));
+    setRulesOpen(false);
+  };
+
+  useEffect(() => {
+    if (!rulesOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setRulesOpen(false); };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [rulesOpen]);
+
   if (submitted) {
     return (
       <div className="form-section">
-        <div className="message success">
-          ✅ Регистрация успешно завершена!
-        </div>
+        <div className="message success">✅ Регистрация успешно завершена!</div>
         <div className="form-buttons" style={{ marginTop: '20px' }}>
           <button onClick={handleReset} className="btn" style={{ background: '#334155', color: 'white' }}>
             Зарегистрировать еще
@@ -162,55 +159,20 @@ function RegistrationForm({ onRegisterSuccess }) {
 
         <div className="form-group">
           <label>Пароль *</label>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Введите пароль (минимум 6 символов)"
-              disabled={loading}
-              style={{ flex: 1 }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                background: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              {showPassword ? '🙈' : '👁️'}
-            </button>
-          </div>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Введите пароль (минимум 10 символов)"
+            disabled={loading}
+          />
           {errors.password && <span className="error-message">{errors.password}</span>}
         </div>
 
         <div className="form-group">
-          <label>Возраст</label>
-          <input
-            type="number"
-            name="age"
-            value={formData.age}
-            onChange={handleChange}
-            placeholder="Введите возраст"
-            disabled={loading}
-            min="1"
-            max="150"
-          />
-        </div>
-
-        <div className="form-group">
           <label>Город *</label>
-          <select
-            name="city"
-            value={formData.city}
-            onChange={handleChange}
-            disabled={loading}
-          >
+          <select name="city" value={formData.city} onChange={handleChange} disabled={loading}>
             <option value="">Выберите город</option>
             <option value="Москва">Москва</option>
             <option value="Санкт-Петербург">Санкт-Петербург</option>
@@ -231,30 +193,62 @@ function RegistrationForm({ onRegisterSuccess }) {
               onChange={handleChange}
               disabled={loading}
             />
-            Согласен с правилами
+            <span
+              className="rules-link-text"
+              onClick={(e) => {
+                e.preventDefault();
+                setRulesOpen(true);
+              }}
+            >
+              Согласен с правилами
+            </span>
           </label>
           {errors.rules && <span className="error-message">{errors.rules}</span>}
         </div>
 
+        <div className="form-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              name="personalData"
+              checked={formData.personalData}
+              onChange={handleChange}
+              disabled={loading}
+            />
+            Я даю согласие на обработку персональных данных
+          </label>
+          {errors.personalData && <span className="error-message">{errors.personalData}</span>}
+        </div>
+
         <div className="form-buttons">
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={loading}
-          >
+          <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? '⏳ Отправка...' : 'Отправить'}
           </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="btn"
-            style={{ background: '#ccc', color: '#333' }}
-            disabled={loading}
-          >
+          <button type="button" onClick={handleReset} className="btn" style={{ background: '#ccc', color: '#333' }} disabled={loading}>
             Очистить
           </button>
         </div>
       </form>
+
+      {rulesOpen && (
+        <div className="rules-modal-overlay" onClick={() => setRulesOpen(false)}>
+          <div className="rules-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="rules-modal-close" onClick={() => setRulesOpen(false)}>✕</button>
+            <h2 className="rules-modal-title">Правила пользования</h2>
+            <div className="rules-modal-body">
+              <RulesContent />
+            </div>
+            <div className="rules-modal-actions">
+              <button className="btn btn-primary" onClick={acceptRules} style={{ flex: 1 }}>
+                Я согласен с правилами
+              </button>
+              <button className="btn btn-outline-dark" onClick={() => setRulesOpen(false)} style={{ flex: 1 }}>
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

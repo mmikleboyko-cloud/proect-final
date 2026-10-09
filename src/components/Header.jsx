@@ -11,7 +11,6 @@ function Header({ currentPage, setCurrentPage, cartCount, favCount, user, onLogo
     { id: 'contact', name: 'Контакты' }
   ];
 
-  // «Регистрация» — только если не залогинен
   const navLinks = user
     ? baseLinks
     : [...baseLinks, { id: 'register', name: 'Регистрация' }];

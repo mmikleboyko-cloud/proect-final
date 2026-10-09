@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext';
 
 function ProfilePage({ onLogout }) {
+  const toast = useToast();
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,9 +12,7 @@ function ProfilePage({ onLogout }) {
 
   const fetchProfile = async () => {
     try {
-      const res = await fetch('http://m26452hl.beget.tech/profile.php', {
-        credentials: 'include'
-      });
+      const res = await fetch('http://m26452hl.beget.tech/profile.php', { credentials: 'include' });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Ошибка загрузки');
       setProfile(data.user);
@@ -33,7 +33,7 @@ function ProfilePage({ onLogout }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      alert('Не удалось скопировать. Код: ' + profile.welcome_code);
+      toast.warning('Не удалось скопировать. Код: ' + profile.welcome_code);
     }
   };
 
@@ -48,15 +48,10 @@ function ProfilePage({ onLogout }) {
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Ошибка');
 
-      // Обновляем профиль локально
-      setProfile(prev => ({
-        ...prev,
-        welcome_used: true,
-        discount_percent: data.discount_percent,
-      }));
-      alert('✅ ' + data.message);
+      setProfile(prev => ({ ...prev, welcome_used: true, discount_percent: data.discount_percent }));
+      toast.success(data.message);
     } catch (e) {
-      alert('❌ ' + e.message);
+      toast.error(e.message);
     } finally {
       setActivating(false);
     }
@@ -71,9 +66,7 @@ function ProfilePage({ onLogout }) {
   const formatDate = (iso) => {
     if (!iso) return '—';
     const d = new Date(iso.replace(' ', 'T'));
-    return d.toLocaleDateString('ru-RU', {
-      day: '2-digit', month: 'long', year: 'numeric'
-    });
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
   const goToCatalog = () => {
@@ -96,11 +89,7 @@ function ProfilePage({ onLogout }) {
         <section className="container">
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <p style={{ color: '#e74c3c', fontSize: '18px' }}>❌ {error}</p>
-            <button
-              className="btn btn-primary"
-              onClick={() => window.location.reload()}
-              style={{ marginTop: '20px' }}
-            >
+            <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ marginTop: '20px' }}>
               Обновить страницу
             </button>
           </div>
@@ -115,44 +104,23 @@ function ProfilePage({ onLogout }) {
         <h1 className="page-title">Личный кабинет</h1>
 
         <div className="profile-layout">
-
-          {/* ЛЕВАЯ КОЛОНКА — Карточка пользователя */}
           <aside className="profile-card">
-            <div className="profile-avatar">
-              {getInitials(profile.name)}
-            </div>
+            <div className="profile-avatar">{getInitials(profile.name)}</div>
             <h2 className="profile-name">{profile.name}</h2>
             <p className="profile-email">{profile.email}</p>
 
             <div className="profile-divider" />
 
             <ul className="profile-info-list">
-              <li>
-                <span className="label">Город</span>
-                <span className="value">{profile.city || '—'}</span>
-              </li>
-              <li>
-                <span className="label">Возраст</span>
-                <span className="value">{profile.age ?? '—'}</span>
-              </li>
-              <li>
-                <span className="label">С нами с</span>
-                <span className="value">{formatDate(profile.created_at)}</span>
-              </li>
+              <li><span className="label">Город</span><span className="value">{profile.city || '—'}</span></li>
+              <li><span className="label">Возраст</span><span className="value">{profile.age ?? '—'}</span></li>
+              <li><span className="label">С нами с</span><span className="value">{formatDate(profile.created_at)}</span></li>
             </ul>
 
-            <button
-              className="btn profile-logout-btn"
-              onClick={onLogout}
-            >
-              Выйти из аккаунта
-            </button>
+            <button className="btn profile-logout-btn" onClick={onLogout}>Выйти из аккаунта</button>
           </aside>
 
-          {/* ПРАВАЯ КОЛОНКА */}
           <div className="profile-main">
-
-            {/* Приветственный код */}
             {!profile.welcome_used && profile.welcome_code ? (
               <div className="profile-block gift-block">
                 <div className="gift-header">
@@ -165,10 +133,7 @@ function ProfilePage({ onLogout }) {
 
                 <div className="gift-code-wrapper">
                   <code className="gift-code">{profile.welcome_code}</code>
-                  <button
-                    className="btn btn-primary gift-copy-btn"
-                    onClick={handleCopyCode}
-                  >
+                  <button className="btn btn-primary gift-copy-btn" onClick={handleCopyCode}>
                     {copied ? '✓ Скопировано' : 'Скопировать'}
                   </button>
                 </div>
@@ -190,23 +155,17 @@ function ProfilePage({ onLogout }) {
                 <span className="gift-icon">✅</span>
                 <div>
                   <h3>Код активирован</h3>
-                  <p>
-                    Ваша скидка <strong>{profile.discount_percent}%</strong> ждёт следующего заказа
-                  </p>
+                  <p>Ваша скидка <strong>{profile.discount_percent}%</strong> ждёт следующего заказа</p>
                 </div>
               </div>
             ) : null}
 
-            {/* История заказов */}
             <div className="profile-block">
               <h3 className="profile-block-title">📦 История заказов</h3>
-
               {orders.length === 0 ? (
                 <div className="empty-orders">
                   <p>У вас пока нет заказов</p>
-                  <button className="btn btn-primary" onClick={goToCatalog}>
-                    Перейти в каталог
-                  </button>
+                  <button className="btn btn-primary" onClick={goToCatalog}>Перейти в каталог</button>
                 </div>
               ) : (
                 <div className="orders-table-wrapper">
@@ -237,7 +196,6 @@ function ProfilePage({ onLogout }) {
                 </div>
               )}
             </div>
-
           </div>
         </div>
       </section>

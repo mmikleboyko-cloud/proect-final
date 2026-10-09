@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext';
 
 function FavoritesPage({ favorites, onToggleFavorite }) {
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addingItemId, setAddingItemId] = useState(null);
@@ -9,9 +11,7 @@ function FavoritesPage({ favorites, onToggleFavorite }) {
   const fetchFavorites = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://m26452hl.beget.tech/get_favorites.php', {
-        credentials: 'include'
-      });
+      const res = await fetch('http://m26452hl.beget.tech/get_favorites.php', { credentials: 'include' });
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -23,7 +23,6 @@ function FavoritesPage({ favorites, onToggleFavorite }) {
 
   useEffect(() => { fetchFavorites(); }, []);
 
-  // Escape закрывает модалку + блокировка скролла
   useEffect(() => {
     if (!selectedProduct) return;
     const onKey = (e) => { if (e.key === 'Escape') setSelectedProduct(null); };
@@ -47,11 +46,11 @@ function FavoritesPage({ favorites, onToggleFavorite }) {
       });
       const result = await response.json();
       if (result.success) {
-        alert('✅ Товар добавлен в корзину');
+        toast.success('Товар добавлен в корзину');
         window.dispatchEvent(new CustomEvent('cartUpdated'));
       } else throw new Error(result.error || 'Ошибка');
     } catch (err) {
-      alert('❌ ' + err.message);
+      toast.error(err.message);
     } finally {
       setAddingItemId(null);
     }
@@ -59,7 +58,6 @@ function FavoritesPage({ favorites, onToggleFavorite }) {
 
   const handleRemoveFav = async (productId) => {
     await onToggleFavorite(productId);
-    // удаляем сразу из локального списка, чтобы не перезагружать
     setItems(prev => prev.filter(i => i.id !== productId));
   };
 
@@ -98,35 +96,24 @@ function FavoritesPage({ favorites, onToggleFavorite }) {
             <p style={{ fontSize: '14px', color: '#999', marginBottom: '30px' }}>
               Нажмите на 🤍 рядом с товаром в каталоге, чтобы сохранить его здесь
             </p>
-            <button className="btn btn-primary" onClick={goToCatalog}>
-              Перейти в каталог
-            </button>
+            <button className="btn btn-primary" onClick={goToCatalog}>Перейти в каталог</button>
           </div>
         ) : (
           <div className="clothing-grid">
             {items.map(item => (
               <div className="clothing-card" key={item.id}>
                 <div className="card-image" onClick={() => openProduct(item)} style={{ cursor: 'pointer' }}>
-  <img src={item.image} alt={item.name} onError={handleImageError} loading="lazy" />
-  <button
-    className="fav-btn active"
-    onClick={(e) => { e.stopPropagation(); handleRemoveFav(item.id); }}
-    aria-label="Убрать из избранного"
-    title="Убрать из избранного"
-  >
-    ❤️
-  </button>
-  <div className="card-image-overlay">
-    <span className="card-view-badge">👁 Просмотр</span>
-  </div>
-</div>
+                  <img src={item.image} alt={item.name} onError={handleImageError} loading="lazy" />
+                  <button
+                    className="fav-btn active"
+                    onClick={(e) => { e.stopPropagation(); handleRemoveFav(item.id); }}
+                  >❤️</button>
+                  <div className="card-image-overlay">
+                    <span className="card-view-badge">👁 Просмотр</span>
+                  </div>
+                </div>
                 <div className="card-body">
-                  <h3
-                    onClick={() => openProduct(item)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {item.name}
-                  </h3>
+                  <h3 onClick={() => openProduct(item)} style={{ cursor: 'pointer' }}>{item.name}</h3>
                   <p className="category">{item.category}</p>
                   <p className="description">{item.description}</p>
                   <span className="price">{Number(item.price).toLocaleString()} ₽</span>
@@ -136,14 +123,9 @@ function FavoritesPage({ favorites, onToggleFavorite }) {
                       onClick={() => handleAddToCart(item.id)}
                       disabled={addingItemId === item.id}
                     >
-                      {addingItemId === item.id ? '⏳ Добавление...' : '🛒 В корзину'}
+                      {addingItemId === item.id ? '⏳' : '🛒 В корзину'}
                     </button>
-                    <button
-                      className="btn card-btn-more"
-                      onClick={() => openProduct(item)}
-                    >
-                      Подробнее
-                    </button>
+                    <button className="btn card-btn-more" onClick={() => openProduct(item)}>Подробнее</button>
                   </div>
                 </div>
               </div>
@@ -151,38 +133,26 @@ function FavoritesPage({ favorites, onToggleFavorite }) {
           </div>
         )}
 
-        {/* ===== МОДАЛКА ПРОСМОТРА ===== */}
         {selectedProduct && (
           <div className="product-modal-overlay" onClick={closeProduct}>
             <div className="product-modal" onClick={(e) => e.stopPropagation()}>
-              <button className="product-modal-close" onClick={closeProduct} aria-label="Закрыть">✕</button>
-
+              <button className="product-modal-close" onClick={closeProduct}>✕</button>
               <div className="product-modal-image">
-                <img
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  onError={handleImageError}
-                />
+                <img src={selectedProduct.image} alt={selectedProduct.name} onError={handleImageError} />
                 <button
                   className={`fav-btn fav-btn-modal ${favorites?.has(selectedProduct.id) ? 'active' : ''}`}
                   onClick={() => onToggleFavorite(selectedProduct.id)}
-                  aria-label="В избранное"
                 >
                   {favorites?.has(selectedProduct.id) ? '❤️' : '🤍'}
                 </button>
               </div>
-
               <div className="product-modal-info">
                 <span className="product-modal-category">{selectedProduct.category}</span>
                 <h2 className="product-modal-title">{selectedProduct.name}</h2>
                 <p className="product-modal-desc">{selectedProduct.description}</p>
-
                 <div className="product-modal-price-row">
-                  <span className="product-modal-price">
-                    {Number(selectedProduct.price).toLocaleString()} ₽
-                  </span>
+                  <span className="product-modal-price">{Number(selectedProduct.price).toLocaleString()} ₽</span>
                 </div>
-
                 <div className="product-modal-actions">
                   <button
                     className="btn btn-primary"
@@ -192,9 +162,7 @@ function FavoritesPage({ favorites, onToggleFavorite }) {
                   >
                     {addingItemId === selectedProduct.id ? '⏳ Добавление...' : '🛒 Добавить в корзину'}
                   </button>
-                  <button className="btn btn-outline-dark" onClick={closeProduct} style={{ flex: 1 }}>
-                    Закрыть
-                  </button>
+                  <button className="btn btn-outline-dark" onClick={closeProduct} style={{ flex: 1 }}>Закрыть</button>
                 </div>
               </div>
             </div>
